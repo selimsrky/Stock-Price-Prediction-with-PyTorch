@@ -1,0 +1,25 @@
+# Virtual environments
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# Data files
+data/
+
+# Model weights
+*.pt
+*.pth
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+desktop.ini
