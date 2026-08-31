@@ -30,38 +30,39 @@ A time-series stock price prediction pipeline built with PyTorch. This project f
 - [x] Document final results, limitations, and key learnings in the README.md.
 - [ ] Deliverable: Fully completed GitHub repository, clean notebook, and a comparison table.
 
-## Klasör Yapısı
+## Directory Structure
 
 ```
 ├── data/
-│   ├── raw/                       # fetch_data.py ile indirilen ham OHLCV CSV'leri (git'e dahil değil)
-│   └── processed/                 # preprocess.py çıktısı: train/val/test.csv + scaler.pkl (git'e dahil değil)
+│   ├── raw/                       # Raw OHLCV CSVs downloaded via fetch_data.py (not in git)
+│   └── processed/                 # preprocess.py output: train/val/test.csv + scaler.pkl (not in git)
 ├── models/
-│   └── best_model.pt              # En iyi validation loss'ta kaydedilen model ağırlıkları (git'e dahil değil)
+│   └── best_model.pt              # Model weights saved at best validation loss (not in git)
 ├── notebooks/
-│   ├── 01_data_exploration.ipynb  # Veri keşfi, temizlik, teknik göstergeler (SMA/RSI/MACD)
-│   └── 02_results.ipynb           # Final metrikler ve tahmin grafiği özeti
+│   ├── 01_data_exploration.ipynb  # Data exploration, cleaning, technical indicators (SMA/RSI/MACD)
+│   └── 02_results.ipynb            # Final metrics and prediction chart summary
 ├── results/
-│   ├── loss_curve.png             # Train/validation loss eğrisi
-│   └── predictions_vs_actual.png  # Test setinde gerçek vs. tahmin edilen fiyat
+│   ├── loss_curve.png             # Train/validation loss curve
+│   └── predictions_vs_actual.png  # Actual vs. predicted prices on test set
 ├── scripts/
-│   ├── fetch_data.py              # yfinance ile OHLCV verisi indirme
-│   ├── preprocess.py              # Teknik gösterge ekleme, train/val/test bölme, ölçekleme
-│   ├── test_dataset.py            # StockDataset + DataLoader shape testi
-│   ├── hyperparameter_search.py   # lr / hidden_size / lookback için manuel grid search
-│   ├── compare_models.py          # LSTM vs GRU: final val loss ve eğitim süresi karşılaştırması
-│   ├── evaluate.py                # Test seti değerlendirmesi (RMSE/MAE/MAPE) ve tahmin grafiği
-│   └── symbols/bist30.txt         # BIST-30 sembol listesi
+│   ├── fetch_data.py              # Download OHLCV data using yfinance
+│   ├── preprocess.py              # Add technical indicators, train/val/test split, scaling
+│   ├── test_dataset.py            # StockDataset + DataLoader shape test
+│   ├── hyperparameter_search.py   # Manual grid search for lr / hidden_size / lookback
+│   ├── compare_models.py          # LSTM vs GRU: final val loss and training time comparison
+│   ├── evaluate.py                # Test set evaluation (RMSE/MAE/MAPE) and prediction plot
+│   └── symbols/bist30.txt         # BIST-30 ticker symbol list
 ├── src/
-│   ├── dataset.py                 # StockDataset (kayan pencereli PyTorch Dataset)
-│   ├── models.py                  # LSTMModel & GRUModel tanımları
-│   └── train.py                   # train_one_epoch / validate / train_model ve tam eğitim döngüsü
-├── app.py                         # Masaüstü GUI: BIST-30 sembol listesi + "Analiz Et" butonu
+│   ├── dataset.py                 # StockDataset (sliding window PyTorch Dataset)
+│   ├── models.py                  # LSTMModel & GRUModel definitions
+│   └── train.py                   # train_one_epoch / validate / train_model and full training loop
+├── app.py                         # Desktop GUI: BIST-30 symbol list + "Analyze" button
 ├── requirements.txt
 └── README.md
+
 ```
 
-## Kurulum
+## Installation
 
 ```bash
 python -m venv venv
@@ -74,86 +75,77 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Kullanım
+## Usage
 
-### 1. Veri indirme
+### 1. Download Data
 
 ```bash
 python scripts/fetch_data.py THYAO.IS
-# veya BIST-30 listesindeki tüm semboller için:
+# Or for all symbols in the BIST-30 list:
 python scripts/fetch_data.py --list-file scripts/symbols/bist30.txt
 ```
 
-### 2. Ön işleme (teknik göstergeler + kronolojik train/val/test bölme + ölçekleme)
+### 2. Preprocessing (technical indicators + chronological train/val/test split + scaling)
 
 ```bash
 python scripts/preprocess.py --symbol THYAO.IS
 ```
 
-`data/processed/` altına `train.csv`, `val.csv`, `test.csv` ve (sadece train ile fit edilmiş) `scaler.pkl` kaydedilir.
+`train.csv`, `val.csv`, `test.csv`, and `scaler.pkl` (fitted on train set only) are saved under `data/processed/`.
 
-### 3. Eğitim
+### 3. Model Training
 
 ```bash
 python src/train.py
 ```
 
-`LSTMModel`'i 25 epoch eğitir; en iyi validation loss'ta model `models/best_model.pt` olarak, loss eğrisi `results/loss_curve.png` olarak kaydedilir.
+Trains `LSTMModel` for 25 epochs; the model is saved as `models/best_model.pt` at the best validation loss, and the loss curve is saved as `results/loss_curve.png`.
 
-### 4. Değerlendirme
+### 4. Evaluation
 
 ```bash
 python scripts/evaluate.py
 ```
+Runs `models/best_model.pt` on the test set, inverse-transforms predictions back to original price scale, prints RMSE/MAE/MAPE to the console, and generates the `results/predictions_vs_actual.png` plot.
 
-`models/best_model.pt`'yi test setinde çalıştırır, tahminleri gerçek fiyat birimine çevirip RMSE/MAE/MAPE'yi konsola yazdırır ve `results/predictions_vs_actual.png` grafiğini üretir.
-
-### Diğer scriptler (opsiyonel)
+### Other Scripts (Optional)
 
 ```bash
-# LSTM ile GRU'yu aynı hiperparametrelerle karşılaştır (final val loss + eğitim süresi)
+# Compare LSTM and GRU with the same hyperparameters (final val loss + training time)
 python scripts/compare_models.py
 
-# lr / hidden_size / lookback için manuel grid search, en iyi 3 kombinasyonu yazdırır
+# Manual grid search for lr / hidden_size / lookback, prints the top 3 combinations
 python scripts/hyperparameter_search.py
 ```
 
-## Masaüstü Uygulaması (GUI)
+## Desktop Application (GUI)
 
-Komut satırı yerine tek pencereden çalışmak için basit bir Tkinter arayüzü de var:
+There is also a simple Tkinter interface to work from a single window instead of the command line:
 
 ```bash
 python app.py
 ```
 
-Açılış ekranında **HisseAnaliz** başlığı ile **Projenin Amacı** / **Nasıl Kullanılır** bilgi butonları bulunur (tıklandığında açıklama metni ekranda aşağı doğru açılır). Sol menüdeki lacivert BIST-30 butonlarından birine tıklayınca o hissenin güne başlangıç fiyatı gösterilir; altındaki **Analiz Et** butonuna basınca uygulama seçilen hisse için `fetch_data.py` → `preprocess.py` → `train_model()` (25 epoch) → `run_evaluation()` adımlarını arka planda (arayüzü kilitlemeden) sırayla çalıştırır. İşlem sürerken adım adım ilerleme günlüğü, tamamlanınca RMSE/MAE/MAPE metrikleri ile loss/tahmin grafikleri pencerede gösterilir. Her analiz bir öncekinin `data/processed/`, `models/best_model.pt` ve `results/` çıktılarının üzerine yazar — yani uygulama her an tek bir aktif analiz durumunu gösterir.
+The home screen features the **Stock Analysis** header along with **Project Purpose** / **How to Use** info buttons (clicking them expands the explanatory text downwards). Clicking one of the dark navy BIST-30 buttons in the left sidebar displays that stock's opening price; clicking the **Analyze** button beneath it sequentially executes `fetch_data.py` → `preprocess.py` → `train_model()` (25 epochs) → `run_evaluation()` in the background (without freezing the UI) for the selected stock. A step-by-step progress log is shown during execution, and upon completion, RMSE/MAE/MAPE metrics along with loss and prediction plots are displayed in the window. Each analysis overwrites the previous run's outputs in `data/processed/`, `models/best_model.pt`, and `results/` — meaning the application always displays a single active analysis state.
 
-## Sonuçlar
+## Results
 
-`models/best_model.pt` (en iyi validation loss'ta kaydedilen LSTM modeli), THYAO.IS test seti üzerinde:
+`models/best_model.pt` (the LSTM model saved at the best validation loss) on the THYAO.IS test set:
 
-| Metrik | Değer |
+| Metric | Value |
 | --- | --- |
-| RMSE | 9.27 TL |
-| MAE | 7.03 TL |
-| MAPE | %2.29 |
+| RMSE | 9.27 TRY |
+| MAE | 7.03 TRY |
+| MAPE | 2.29% |
 
-![Test setinde gerçek vs. tahmin edilen kapanış fiyatı](results/predictions_vs_actual.png)
+![Actual vs. predicted closing price on the test set](results/predictions_vs_actual.png)
 
-Ayrıntılı metrik hesaplaması ve grafik için bkz. `scripts/evaluate.py` ve `notebooks/02_results.ipynb`.
+For detailed metric calculations and plots, see `scripts/evaluate.py` and `notebooks/02_results.ipynb`.
 
-## Sınırlamalar
+## Limitations
 
-- Model tek bir sembol (THYAO.IS) üzerinde eğitildi ve değerlendirildi; başka hisselere genelleme test edilmedi.
-- Model bir sonraki günün Close fiyatını tahmin ediyor; fiyat serisinin gün-be-gün yüksek otokorelasyonu nedeniyle tahmin eğrisi gerçek fiyatı bir gün gecikmeli takip etme eğiliminde (tahmin grafiğinde görülebilir) — bu, "bir önceki günün fiyatını tahmin olarak kullan" şeklindeki naive bir baseline'a kıyasla henüz ölçülmedi.
-- GRU mimarisi `compare_models.py` ile tek seferlik karşılaştırıldı; ayrı bir checkpoint olarak kaydedilip test setinde LSTM ile aynı resmi değerlendirmeden (RMSE/MAE/MAPE) geçirilmedi.
-- Hiperparametre araması küçük bir grid (3 lr × 2 hidden_size × 2 lookback) ve az epoch (5) ile yapıldı; daha geniş bir arama (örn. Optuna ile) farklı ve muhtemelen daha iyi sonuçlar verebilir.
-- Sadece fiyat/hacim ve teknik göstergeler (SMA-20, RSI-14, MACD) kullanıldı; haber akışı, piyasa duyarlılığı gibi dışsal veriler dahil edilmedi.
-
-## Gelecek Çalışmalar
-
-- GRU modelini de bir checkpoint olarak kaydedip test setinde resmi olarak değerlendirmek ve LSTM ile RMSE/MAE/MAPE bazında yan yana karşılaştırmak.
-- Naive baseline (bir önceki günün fiyatı) ile karşılaştırma ekleyerek modelin gerçek katkısını ölçmek.
-- Modeli BIST-30'daki diğer sembollere genelleştirmek veya çoklu-hisse (multi-stock) eğitim denemek.
-- Optuna ile daha geniş ve otomatik bir hiperparametre araması yapmak.
-- Ek özellikler (örn. işlem hacmi türevleri, farklı zaman dilimlerinden göstergeler, piyasa endeksi) eklemek.
+- The model was trained and evaluated on a single ticker (THYAO.IS); generalization to other stocks was not tested.
+- The model predicts the next day's Close price; due to high day-to-day autocorrelation in price series, the predicted curve tends to lag behind the actual price by one day (as visible in the prediction plot) — this has not yet been benchmarked against a naive baseline such as "using the previous day's price as the prediction."
+- The GRU architecture was compared in a single run via `compare_models.py`; it was not saved as a separate checkpoint or evaluated under the same formal test set evaluation (RMSE/MAE/MAPE) as LSTM.
+- Hyperparameter search was conducted over a small grid (3 lr × 2 hidden_size × 2 lookback) with few epochs (5); a broader search (e.g., with Optuna) might yield different and potentially better results.
+- Only price/volume data and technical indicators (SMA-20, RSI-14, MACD) were used; external data such as news feeds or market sentiment was not included.
